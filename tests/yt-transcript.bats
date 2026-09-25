@@ -55,6 +55,22 @@ stub_engine() {
   [ "$output" = "npx -y bun" ]
 }
 
+@test "executes compound runner: npx -y bun receives correct args" {
+  stub_engine
+  mkdir -p "$TMP/bin"
+  printf '#!/usr/bin/env bash\nfor arg in "$@"; do printf "ARG[%%s]\\n" "$arg"; done\nprintf "%%s\\n" "${FAKE_TRANSCRIPT_PATH:-/tmp/fake/transcript.md}"\nexit 0\n' > "$TMP/bin/npx"
+  chmod +x "$TMP/bin/npx"
+  export PATH="$TMP/bin:/usr/bin:/bin"
+  run "$CLT" 'https://youtu.be/xyz'
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"ARG[-y]"* ]]
+  [[ "$output" == *"ARG[bun]"* ]]
+  [[ "$output" == *"ARG[$TMP/engine/scripts/main.ts]"* ]]
+  [[ "$output" == *"ARG[--no-timestamps]"* ]]
+  [[ "$output" == *"ARG[https://youtu.be/xyz]"* ]]
+  [[ "$output" != *"--speakers"* ]]
+}
+
 @test "passes URL as one argument (question mark and ampersand intact)" {
   stub_engine
   export YT_SCRIBE_RUNNER="$FAKE_RUNNER"
