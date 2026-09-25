@@ -18,3 +18,8 @@ setup() { REPO="$(cd "$BATS_TEST_DIRNAME/.." && pwd)"; }
   run grep -F 'already exists' "$REPO/skill/youtube-scribe/SKILL.md"
   [ "$status" -eq 0 ]
 }
+
+@test "command frontmatter is valid" {
+  run grep -E '^description: .+' "$REPO/command/youtube.md"
+  [ "$status" -eq 0 ]
+}
