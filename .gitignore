@@ -33,3 +33,6 @@ Thumbs.db
 
 # SDD scratch
 .superpowers/
+
+# Generated transcripts
+transcripts/
