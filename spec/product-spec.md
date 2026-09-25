@@ -97,7 +97,7 @@ YouTube URL
 
 | # | Phase | One-line goal (the vertical slice) | Status |
 |---|-------|------------------------------------|--------|
-| 0 | Walking skeleton | install engine + thin wrapper + skill → real transcript and TL;DR for one URL | planned |
+| 0 | Walking skeleton | install engine + thin wrapper + skill → real transcript and TL;DR for one URL | done |
 | 1 | Command & robustness | `/youtube` command, engine discovery/errors, bun fallback, language flags, idempotency | planned |
 | 2 | Whisper fallback | captionless videos: `faster-whisper` (CPU) + `--engine` selection | planned |
 | 3 | Beyond v1 | GPU Whisper, playlists, non-YouTube sites, searchable library | parked |
@@ -125,3 +125,7 @@ _Changelog (update on every phase close — fights spec-code drift):_
 - 2026-09-25: created (design brainstorm + reuse decision: adopt baoyu engine, build thin TLDR layer).
 - 2026-09-25: transcript must be readable prose (full sentences, no timestamps); root-caused
   the choppy output to the engine's `--speakers` raw-SRT mode and decided to never use it.
+- 2026-09-25: Phase 0 done. Shipped `bin/yt-transcript` (pinned engine baoyu-youtube-transcript
+  v1.1.0, `--no-timestamps`, engine discovery + bun/npx runner), `skill/youtube-scribe`,
+  command `/youtube`, and `scripts/install.sh` (non-interactive engine install). 19/19 tests
+  green (incl. real end-to-end on a 3Blue1Brown video), shellcheck clean.
