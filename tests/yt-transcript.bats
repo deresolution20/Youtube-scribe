@@ -97,6 +97,22 @@ stub_engine() {
   [[ "$output" == *"ARG[en,zh]"* ]]
 }
 
+@test "passes --refresh when flag is set" {
+  stub_engine
+  export YT_SCRIBE_RUNNER="$FAKE_RUNNER"
+  run "$CLT" 'https://youtu.be/abc' --refresh
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"ARG[--refresh]"* ]]
+}
+
+@test "omits --refresh when flag is not passed" {
+  stub_engine
+  export YT_SCRIBE_RUNNER="$FAKE_RUNNER"
+  run "$CLT" 'https://youtu.be/abc'
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"--refresh"* ]]
+}
+
 @test "fails on unknown option" {
   run "$CLT" --bogus
   [ "$status" -ne 0 ]

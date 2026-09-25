@@ -25,8 +25,12 @@ teardown() { rm -rf "$TMP"; }
   [ -f "$TMP/npx-args.txt" ]
   local args
   args="$(cat "$TMP/npx-args.txt")"
-  echo "DEBUG args: $args"
-  echo "$args" | grep -q "skills" || { echo "FAIL: no 'skills' in args"; cat "$TMP/npx-args.txt"; return 1; }
-  echo "$args" | grep -q "add" || { echo "FAIL: no 'add' in args"; cat "$TMP/npx-args.txt"; return 1; }
-  echo "$args" | grep -q "\-\-yes" || { echo "FAIL: no '--yes' in args"; cat "$TMP/npx-args.txt"; return 1; }
+  echo "$args" | grep -q "^skills$" || { echo "FAIL: no 'skills' in args"; cat "$TMP/npx-args.txt"; return 1; }
+  echo "$args" | grep -q "^add$" || { echo "FAIL: no 'add' in args"; cat "$TMP/npx-args.txt"; return 1; }
+  echo "$args" | grep -q "^--yes$" || { echo "FAIL: no '--yes' in args"; cat "$TMP/npx-args.txt"; return 1; }
+  # Regression: --yes must come AFTER 'skills' (passed to skills CLI, not consumed by npx)
+  local skills_line yes_line
+  skills_line="$(grep -n "^skills$" "$TMP/npx-args.txt" | head -1 | cut -d: -f1)"
+  yes_line="$(grep -n "^--yes$" "$TMP/npx-args.txt" | head -1 | cut -d: -f1)"
+  [ "$yes_line" -gt "$skills_line" ] || { echo "FAIL: '--yes' appears before 'skills' (npx consumed it)"; return 1; }
 }
