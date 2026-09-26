@@ -64,7 +64,7 @@ I can decide in seconds whether the video is worth watching and actually read it
 - **Cost:** no paid API; TL;DR runs on the existing local model.
 
 ## 6. High-level architecture (one paragraph + a sketch)
-A thin bash wrapper (`bin/yt-transcript`) locates the installed baoyu skill directory
+A thin bash wrapper (`skills/youtube-scribe/scripts/yt-transcript`) locates the installed baoyu skill directory
 and runs its transcript CLI with `bun`, writing the transcript and printing its path.
 It deliberately avoids the engine's `--speakers` mode (which dumps raw per-chunk SRT)
 and passes `--no-timestamps`, so the output is sentence-merged prose. An opencode skill
@@ -78,7 +78,7 @@ YouTube URL
 /youtube command  ──►  youtube-scribe skill (global, opencode)
    │                        │
    │                        ▼
-   │              bin/yt-transcript  (our thin wrapper)
+   │              yt-transcript  (in the skill dir)
    │                        │  locate + run
    │                        ▼
    │          baoyu-youtube-transcript (pinned, unmodified)
@@ -98,7 +98,7 @@ YouTube URL
 | # | Phase | One-line goal (the vertical slice) | Status |
 |---|-------|------------------------------------|--------|
 | 0 | Walking skeleton | install engine + thin wrapper + skill → real transcript and TL;DR for one URL | done |
-| 1 | Command & robustness | `/youtube` command, engine discovery/errors, bun fallback, language flags, idempotency | planned |
+| 1 | Publishable skill packaging | self-contained skill dir, pinned-engine assertion, README/LICENSE, skills.sh packaging | active |
 | 2 | Whisper fallback | captionless videos: `faster-whisper` (CPU) + `--engine` selection | planned |
 | 3 | Beyond v1 | GPU Whisper, playlists, non-YouTube sites, searchable library | parked |
 
@@ -129,3 +129,8 @@ _Changelog (update on every phase close — fights spec-code drift):_
   v1.1.0, `--no-timestamps`, engine discovery + bun/npx runner), `skill/youtube-scribe`,
   command `/youtube`, and `scripts/install.sh` (non-interactive engine install). 19/19 tests
   green (incl. real end-to-end on a 3Blue1Brown video), shellcheck clean.
+- 2026-09-25: Phase 1 (publishable skill packaging) — repurposed from the stale
+  "Command & robustness" slice (its listed items already shipped in Phase 0). Wrapper moved to
+  `skills/youtube-scribe/scripts/`; `skill/` renamed to `skills/`; runtime engine-version pin
+  (1.1.0) with override; engine install now opt-in; README + MIT LICENSE; skill frontmatter
+  carries `license`, `compatibility`, and `metadata`.

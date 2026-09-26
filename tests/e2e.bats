@@ -2,7 +2,7 @@
 
 setup() {
   REPO="$(cd "$BATS_TEST_DIRNAME/.." && pwd)"
-  CLT="$REPO/bin/yt-transcript"
+  CLT="$REPO/skills/youtube-scribe/scripts/yt-transcript"
   TMP="$(mktemp -d)"
 }
 
@@ -18,4 +18,11 @@ teardown() { rm -rf "$TMP"; }
   ! grep -q -- '-->' "$path"
   ! grep -qE '\[[0-9]{2}:[0-9]{2}:[0-9]{2}' "$path"
   [ "$(wc -w < "$path")" -gt 50 ]
+}
+
+@test "skills CLI discovers youtube-scribe (opt-in)" {
+  [ "${RUN_NETWORK_TESTS:-0}" = "1" ] || skip "set RUN_NETWORK_TESTS=1 to run network tests"
+  run npx -y skills add "$REPO" --list
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"youtube-scribe"* ]]
 }
