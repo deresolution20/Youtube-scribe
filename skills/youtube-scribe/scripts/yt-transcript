@@ -1,0 +1,160 @@
+#!/usr/bin/env bash
+# Thin wrapper around the baoyu-youtube-transcript engine.
+# It (a) locates the pinned engine and checks its version, (b) always requests a
+# readable transcript (--no-timestamps, never --speakers), and (c) prints the
+# output file path.
+set -euo pipefail
+
+PROG="yt-transcript"
+ENGINE_NAME="baoyu-youtube-transcript"
+PINNED_ENGINE_VERSION="1.1.0"
+ENGINE_INSTALL_CMD="npx skills add JimLiu/baoyu-skills --skill baoyu-youtube-transcript -g"
+
+usage() {
+  cat >&2 <<EOF
+Usage: $PROG <youtube-url> [options]
+
+Options:
+  --out-dir <dir>          Base output directory for transcripts (default: ./transcripts)
+  --languages <codes>      Comma-separated language priority list (default: en)
+  --refresh                Ignore the engine cache and re-fetch
+  --engine-dir <dir>       Explicit $ENGINE_NAME skill directory
+  --allow-engine-version   Skip the pinned engine version check
+  --print-engine-dir       Print the resolved engine directory and exit
+  --print-runner           Print the command used to run the engine and exit
+  -h, --help               Show this help
+
+Environment:
+  BAOYU_SKILL_DIR                    Override the engine directory
+  YT_SCRIBE_RUNNER                   Override the bun/npx runner
+  YT_SCRIBE_ALLOW_ENGINE_VERSION=1   Skip the pinned engine version check
+EOF
+}
+
+die() { printf '%s: %s\n' "$PROG" "$*" >&2; exit 1; }
+
+find_engine_dir() {
+  local candidates=() dir
+  [ -n "${BAOYU_SKILL_DIR:-}" ] && candidates+=("$BAOYU_SKILL_DIR")
+  if [ -n "${HOME:-}" ]; then
+    candidates+=(
+      "$HOME/.agents/skills/$ENGINE_NAME"
+      "$HOME/.claude/skills/$ENGINE_NAME"
+      "$HOME/.config/opencode/skills/$ENGINE_NAME"
+      "$HOME/.config/opencode/skill/$ENGINE_NAME"
+    )
+  fi
+  for dir in "${candidates[@]}"; do
+    if [ -f "$dir/scripts/main.ts" ]; then
+      printf '%s\n' "$dir"
+      return 0
+    fi
+  done
+  return 1
+}
+
+resolve_runner() {
+  if [ -n "${YT_SCRIBE_RUNNER:-}" ]; then printf '%s\n' "$YT_SCRIBE_RUNNER"; return 0; fi
+  if command -v bun >/dev/null 2>&1; then printf '%s\n' "bun"; return 0; fi
+  if command -v npx >/dev/null 2>&1; then printf '%s\n' "npx -y bun"; return 0; fi
+  return 1
+}
+
+die_engine_missing() {
+  die "$ENGINE_NAME engine not found. Install it with:
+  $ENGINE_INSTALL_CMD
+Then re-run. (Set BAOYU_SKILL_DIR to override the search path.)"
+}
+
+engine_version() {
+  local dir="$1" version
+  [ -f "$dir/SKILL.md" ] || return 1
+  version="$(grep -m1 -E '^version:' "$dir/SKILL.md" | sed -E "s/^version:[[:space:]]*//; s/[\"']//g; s/[[:space:]]*\$//")"
+  [ -n "$version" ] || return 1
+  printf '%s\n' "$version"
+}
+
+assert_engine_version() {
+  local dir="$1" allow="$2" version
+  if [ "$allow" -eq 1 ]; then return 0; fi
+  version="$(engine_version "$dir")" || version=""
+  if [ "$version" != "$PINNED_ENGINE_VERSION" ]; then
+    die "engine version mismatch: expected $PINNED_ENGINE_VERSION, found ${version:-unknown}.
+Update the engine with:
+  $ENGINE_INSTALL_CMD
+Or pass --allow-engine-version / set YT_SCRIBE_ALLOW_ENGINE_VERSION=1 to skip this check."
+  fi
+}
+
+print_engine_dir() {
+  local dir
+  dir="$(find_engine_dir)" || die_engine_missing
+  printf '%s\n' "$dir"
+}
+
+print_runner() {
+  local runner
+  runner="$(resolve_runner)" || die "neither 'bun' nor 'npx' is available; install bun: https://bun.sh"
+  printf '%s\n' "$runner"
+}
+
+run_transcript() {
+  local url="$1" out_dir="$2" languages="$3" refresh="$4" engine_dir="$5" allow="$6"
+  assert_engine_version "$engine_dir" "$allow"
+  local runner
+  runner="$(resolve_runner)" || die "neither 'bun' nor 'npx' is available; install bun: https://bun.sh"
+  local -a args=("$engine_dir/scripts/main.ts" "$url" --no-timestamps --output-dir "$out_dir" --languages "$languages")
+  [ "$refresh" -eq 1 ] && args+=(--refresh)
+  local rc=0
+  if [[ "$runner" == */* ]]; then
+    "$runner" "${args[@]}" || rc=$?
+  else
+    local -a runner_cmd
+    read -r -a runner_cmd <<<"$runner"
+    "${runner_cmd[@]}" "${args[@]}" || rc=$?
+  fi
+  if [ "$rc" -ne 0 ]; then
+    printf '%s: transcript engine failed (exit %s)\n' "$PROG" "$rc" >&2
+    exit "$rc"
+  fi
+}
+
+main() {
+  local url="" out_dir="transcripts" languages="en" refresh=0 engine_dir=""
+  local allow_version=0
+  [ "${YT_SCRIBE_ALLOW_ENGINE_VERSION:-0}" = "1" ] && allow_version=1
+
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      -h|--help) usage; exit 0 ;;
+      --print-engine-dir) print_engine_dir; exit 0 ;;
+      --print-runner) print_runner; exit 0 ;;
+      --out-dir) [ $# -ge 2 ] || die "--out-dir needs a value"; out_dir="$2"; shift 2 ;;
+      --languages) [ $# -ge 2 ] || die "--languages needs a value"; languages="$2"; shift 2 ;;
+      --engine-dir) [ $# -ge 2 ] || die "--engine-dir needs a value"; engine_dir="$2"; shift 2 ;;
+      --refresh) refresh=1; shift ;;
+      --allow-engine-version) allow_version=1; shift ;;
+      --) shift; break ;;
+      -*) die "unknown option: $1" ;;
+      *) [ -z "$url" ] || die "unexpected extra argument: $1"; url="$1"; shift ;;
+    esac
+  done
+
+  [ -n "$url" ] || {
+    if [ "$#" -gt 0 ]; then
+      url="$1"
+    else
+      usage
+      exit 2
+    fi
+  }
+
+  if [ -z "$engine_dir" ]; then
+    engine_dir="$(find_engine_dir)" || die_engine_missing
+  fi
+  [ -f "$engine_dir/scripts/main.ts" ] || die "engine dir '$engine_dir' has no scripts/main.ts"
+
+  run_transcript "$url" "$out_dir" "$languages" "$refresh" "$engine_dir" "$allow_version"
+}
+
+main "$@"

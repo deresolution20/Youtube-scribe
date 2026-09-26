@@ -9,7 +9,8 @@
   third-party transcript engine (baoyu) which we consume as a dependency, not our code.
 - Framework(s): none. A local CLI plus two opencode entry points (a skill and a command).
 - Package manager / build: none for our code. The engine is installed with
-  `npx skills add ... --agent opencode -g`; it executes with `bun`.
+  `npx skills add JimLiu/baoyu-skills --skill baoyu-youtube-transcript -g`; it
+  executes with `bun`.
 - Test runner: **bats** (`bats --print-output-on-failure tests/`).
 - Lint / format: **shellcheck** for all shell files; `bash -n` as a fast syntax gate.
 
@@ -33,13 +34,13 @@
       exact shape opencode validates, or opencode filters them out silently.
 
 ## Conventions
-- Naming: repo `Youtube-scribe`; wrapper `bin/yt-transcript`; skill `youtube-scribe`;
-  command `/youtube`. Video slug dirs are `<channel-slug>/<title-slug>` (engine's layout).
+- Naming: repo `Youtube-scribe`; wrapper `skills/youtube-scribe/scripts/yt-transcript`;
+  skill `youtube-scribe`; command `/youtube`. Video slug dirs are `<channel-slug>/<title-slug>`
+  (engine's layout).
 - Folder layout:
-  - `bin/` — executable wrapper(s)
+  - `skills/youtube-scribe/` — the skill: `SKILL.md` plus `scripts/` (executable wrapper)
   - `tests/` — bats tests + fixtures
-  - `skill/youtube-scribe/SKILL.md` — canonical source for the opencode skill
-  - `command/youtube.md` — canonical source for the opencode command
+  - `command/youtube.md` — canonical source for the opencode command (opencode-only extra)
   - `spec/` — spec-kit artifacts (this file, product spec, phases, tasks)
   - `transcripts/` — generated output (gitignored)
 - Commit message style: imperative, scoped to one concern (e.g. `add yt-transcript wrapper`).

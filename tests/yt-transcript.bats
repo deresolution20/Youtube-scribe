@@ -2,11 +2,11 @@
 
 setup() {
   REPO="$(cd "$BATS_TEST_DIRNAME/.." && pwd)"
-  CLT="$REPO/bin/yt-transcript"
+  CLT="$REPO/skills/youtube-scribe/scripts/yt-transcript"
   TMP="$(mktemp -d)"
   export HOME="$TMP/home"
   mkdir -p "$HOME"
-  unset BAOYU_SKILL_DIR YT_SCRIBE_RUNNER
+  unset BAOYU_SKILL_DIR YT_SCRIBE_RUNNER YT_SCRIBE_ALLOW_ENGINE_VERSION
   export FAKE_RUNNER="$REPO/tests/fixtures/fake-runner.sh"
 }
 
@@ -15,6 +15,7 @@ teardown() { rm -rf "$TMP"; }
 stub_engine() {
   mkdir -p "$TMP/engine/scripts"
   : > "$TMP/engine/scripts/main.ts"
+  printf 'name: baoyu-youtube-transcript\nversion: 1.1.0\n' > "$TMP/engine/SKILL.md"
   export BAOYU_SKILL_DIR="$TMP/engine"
 }
 
@@ -131,4 +132,70 @@ stub_engine() {
   run "$CLT" 'https://youtu.be/abc'
   [ "$status" -ne 0 ]
   [[ "$output" == *"transcript engine failed"* ]]
+}
+
+@test "preserves the engine exit code" {
+  stub_engine
+  export YT_SCRIBE_RUNNER="$FAKE_RUNNER" FAKE_RUNNER_EXIT=7
+  run "$CLT" 'https://youtu.be/abc'
+  [ "$status" -eq 7 ]
+}
+
+@test "rejects an engine with a different version" {
+  mkdir -p "$TMP/engine/scripts"
+  : > "$TMP/engine/scripts/main.ts"
+  printf 'name: baoyu-youtube-transcript\nversion: 9.9.9\n' > "$TMP/engine/SKILL.md"
+  export BAOYU_SKILL_DIR="$TMP/engine" YT_SCRIBE_RUNNER="$FAKE_RUNNER"
+  run "$CLT" 'https://youtu.be/abc'
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"version mismatch"* ]]
+  [[ "$output" != *"ARG["* ]]
+}
+
+@test "rejects an engine with no recorded version" {
+  mkdir -p "$TMP/engine/scripts"
+  : > "$TMP/engine/scripts/main.ts"
+  printf 'name: baoyu-youtube-transcript\n' > "$TMP/engine/SKILL.md"
+  export BAOYU_SKILL_DIR="$TMP/engine" YT_SCRIBE_RUNNER="$FAKE_RUNNER"
+  run "$CLT" 'https://youtu.be/abc'
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"version mismatch"* ]]
+}
+
+@test "--allow-engine-version bypasses the pin check" {
+  mkdir -p "$TMP/engine/scripts"
+  : > "$TMP/engine/scripts/main.ts"
+  printf 'name: baoyu-youtube-transcript\nversion: 9.9.9\n' > "$TMP/engine/SKILL.md"
+  export BAOYU_SKILL_DIR="$TMP/engine" YT_SCRIBE_RUNNER="$FAKE_RUNNER"
+  run "$CLT" 'https://youtu.be/abc' --allow-engine-version
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"ARG[--no-timestamps]"* ]]
+}
+
+@test "YT_SCRIBE_ALLOW_ENGINE_VERSION=1 bypasses the pin check" {
+  mkdir -p "$TMP/engine/scripts"
+  : > "$TMP/engine/scripts/main.ts"
+  printf 'name: baoyu-youtube-transcript\nversion: 9.9.9\n' > "$TMP/engine/SKILL.md"
+  export BAOYU_SKILL_DIR="$TMP/engine" YT_SCRIBE_RUNNER="$FAKE_RUNNER" YT_SCRIBE_ALLOW_ENGINE_VERSION=1
+  run "$CLT" 'https://youtu.be/abc'
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"ARG[--no-timestamps]"* ]]
+}
+
+@test "accepts a quoted version value" {
+  mkdir -p "$TMP/engine/scripts"
+  : > "$TMP/engine/scripts/main.ts"
+  printf 'name: baoyu-youtube-transcript\nversion: "1.1.0"\n' > "$TMP/engine/SKILL.md"
+  export BAOYU_SKILL_DIR="$TMP/engine" YT_SCRIBE_RUNNER="$FAKE_RUNNER"
+  run "$CLT" 'https://youtu.be/abc'
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"ARG[--no-timestamps]"* ]]
+}
+
+@test "accepts a URL after --" {
+  stub_engine
+  export YT_SCRIBE_RUNNER="$FAKE_RUNNER"
+  run "$CLT" -- 'https://youtu.be/abc'
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"ARG[https://youtu.be/abc]"* ]]
 }

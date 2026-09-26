@@ -14,23 +14,37 @@ teardown() { rm -rf "$TMP"; }
   [ -L "$TMP/home/.config/opencode/skills/youtube-scribe" ]
   [ -L "$TMP/home/.config/opencode/command/youtube.md" ]
   [ -x "$TMP/home/.local/bin/yt-transcript" ]
+  [ -f "$TMP/home/.config/opencode/skills/youtube-scribe/SKILL.md" ]
+  [ -f "$TMP/home/.config/opencode/skills/youtube-scribe/scripts/yt-transcript" ]
 }
 
-@test "engine install calls npx with --yes" {
+@test "does not install the engine by default" {
+  mkdir -p "$TMP/bin"
+  printf '#!/usr/bin/env bash\nexit 1\n' > "$TMP/bin/npx"
+  chmod +x "$TMP/bin/npx"
+  HOME="$TMP/home" PATH="$TMP/bin:/usr/bin:/bin" run "$REPO/scripts/install.sh"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"Skipping engine install"* ]]
+}
+
+@test "engine install is opt-in and calls npx with --yes after skills" {
   mkdir -p "$TMP/bin"
   printf '#!/usr/bin/env bash\nprintf "%%s\\n" "$@" > "${NPX_ARGS_FILE}"\nexit 0\n' > "$TMP/bin/npx"
   chmod +x "$TMP/bin/npx"
-  NPX_ARGS_FILE="$TMP/npx-args.txt" HOME="$TMP/home" PATH="$TMP/bin:/usr/bin:/bin" run "$REPO/scripts/install.sh"
+  NPX_ARGS_FILE="$TMP/npx-args.txt" YT_SCRIBE_INSTALL_ENGINE=1 HOME="$TMP/home" PATH="$TMP/bin:/usr/bin:/bin" run "$REPO/scripts/install.sh"
   [ "$status" -eq 0 ]
   [ -f "$TMP/npx-args.txt" ]
-  local args
-  args="$(cat "$TMP/npx-args.txt")"
-  echo "$args" | grep -q "^skills$" || { echo "FAIL: no 'skills' in args"; cat "$TMP/npx-args.txt"; return 1; }
-  echo "$args" | grep -q "^add$" || { echo "FAIL: no 'add' in args"; cat "$TMP/npx-args.txt"; return 1; }
-  echo "$args" | grep -q "^--yes$" || { echo "FAIL: no '--yes' in args"; cat "$TMP/npx-args.txt"; return 1; }
-  # Regression: --yes must come AFTER 'skills' (passed to skills CLI, not consumed by npx)
+  grep -q "^skills$" "$TMP/npx-args.txt"
+  grep -q "^add$" "$TMP/npx-args.txt"
+  grep -q "^--yes$" "$TMP/npx-args.txt"
   local skills_line yes_line
   skills_line="$(grep -n "^skills$" "$TMP/npx-args.txt" | head -1 | cut -d: -f1)"
   yes_line="$(grep -n "^--yes$" "$TMP/npx-args.txt" | head -1 | cut -d: -f1)"
-  [ "$yes_line" -gt "$skills_line" ] || { echo "FAIL: '--yes' appears before 'skills' (npx consumed it)"; return 1; }
+  [ "$yes_line" -gt "$skills_line" ]
+}
+
+@test "fails clearly when HOME is unset" {
+  run env -u HOME "$REPO/scripts/install.sh"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"HOME is not set"* ]]
 }
