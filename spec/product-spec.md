@@ -98,7 +98,7 @@ YouTube URL
 | # | Phase | One-line goal (the vertical slice) | Status |
 |---|-------|------------------------------------|--------|
 | 0 | Walking skeleton | install engine + thin wrapper + skill → real transcript and TL;DR for one URL | done |
-| 1 | Publishable skill packaging | self-contained skill dir, pinned-engine assertion, README/LICENSE, skills.sh packaging | active |
+| 1 | Publishable skill packaging | self-contained skill dir, pinned-engine assertion, README/LICENSE, skills.sh packaging | done |
 | 2 | Whisper fallback | captionless videos: `faster-whisper` (CPU) + `--engine` selection | planned |
 | 3 | Beyond v1 | GPU Whisper, playlists, non-YouTube sites, searchable library | parked |
 
@@ -134,3 +134,8 @@ _Changelog (update on every phase close — fights spec-code drift):_
   `skills/youtube-scribe/scripts/`; `skill/` renamed to `skills/`; runtime engine-version pin
   (1.1.0) with override; engine install now opt-in; README + MIT LICENSE; skill frontmatter
   carries `license`, `compatibility`, and `metadata`.
+- 2026-09-25: Phase 1 done and merged (PR #1, squash, `f12de54`). 34/34 tests, shellcheck
+  clean, `skills-ref validate` passes, `skills add --list` discovers `youtube-scribe`, real
+  pinned-engine e2e green. Decision: keep the nested `metadata.openclaw` map (the spec
+  describes string values, but `skills-ref` accepts nesting and it matches the baoyu
+  convention). Publishing to skills.sh still requires making the repo public.
