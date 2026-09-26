@@ -1,5 +1,7 @@
 # YouTube Scribe
 
+[![skills.sh](https://skills.sh/b/deresolution20/Youtube-scribe)](https://skills.sh/deresolution20/Youtube-scribe)
+
 Turn a YouTube URL into a readable, full-sentence transcript (no timestamps) plus a
 TL;DR summary saved beside it. It is a skill for agents that support the
 [Agent Skills](https://agentskills.io) format, published on

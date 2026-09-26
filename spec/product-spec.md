@@ -139,3 +139,9 @@ _Changelog (update on every phase close — fights spec-code drift):_
   pinned-engine e2e green. Decision: keep the nested `metadata.openclaw` map (the spec
   describes string values, but `skills-ref` accepts nesting and it matches the baoyu
   convention). Publishing to skills.sh still requires making the repo public.
+- 2026-09-25: v1.0.0 published. Repo is public with discovery metadata (description +
+  topics: `agent-skills`, `claude-skills`, `skill-md`, `ai-agents`, `youtube`, `transcript`);
+  `CHANGELOG.md` added; annotated tag `v1.0.0` + GitHub release; first
+  `npx skills add deresolution20/Youtube-scribe` run to trigger skills.sh indexing
+  (telemetry-driven, no publish command). Phase 1's residual "publishing still requires
+  making the repo public" is closed. CI/SKILL.md validation parked in `spec/IDEAS.md`.
